@@ -4,11 +4,12 @@ import getopt
 import serial
 import select
 
+currentString = ''
+
 def printArgHelp():
     print('amrConsole.py -p <port> -b <baud>')
 
 def parsingStateMachine(nextByte, ser):
-    global parsingState
     global currentString
 
     if nextByte == b'\n':
@@ -18,7 +19,6 @@ def parsingStateMachine(nextByte, ser):
         try:
             currentString += nextByte.decode("utf_8")
         except UnicodeDecodeError:
-            parsingState = 0
             print('Caught unicode error: ', currentString)
             currentString = ''
 
