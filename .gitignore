@@ -1,0 +1,3 @@
+build/
+src/bserial.egg-info/
+src/__pycache__/
