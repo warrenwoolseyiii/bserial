@@ -33,7 +33,8 @@ def runConsole(ser):
     while sys.stdin in select.select([sys.stdin], [], [], 0)[0]:
         line = sys.stdin.readline()
         #parseInput(line, ser)
-        ser.write(line.strip('\r\n').encode('utf-8'))
+        #ser.write(line.strip('\r\n').encode('utf-8'))
+        ser.write(line.encode('utf-8'))
 
 def main(argv):
     comPort = ''
