@@ -33,11 +33,16 @@ def read_serial(serial_port):
 
     """
     while True:
-        if serial_port.in_waiting > 0:
-            # Read all available data from the serial port and print it to the console
-            data = serial_port.read_all().decode()
-            sys.stdout.write(data)
-            sys.stdout.flush()
+        try:
+            if serial_port.in_waiting > 0:
+                # Read all available data from the serial port and print it to the console
+                data = serial_port.read_all().decode()
+                sys.stdout.write(data)
+                sys.stdout.flush()
+        except Exception as e:
+            # Print the exception type and the message
+            print(f"{type(e).__name__}: {e}")
+            serial_port.flush()
 
 def main(args):
     """Main function for the bserial program.
