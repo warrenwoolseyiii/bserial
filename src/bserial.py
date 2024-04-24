@@ -21,6 +21,8 @@ import argparse
 import threading
 import sys
 from serial import Serial
+import ctypes
+import platform
 
 def read_serial(serial_port):
     """Read data from the serial port and print it to the console.
@@ -57,8 +59,39 @@ def main(args):
 
     """
     try:
+        # Check if the script is running on Windows
+        if platform.system() == 'Windows':
+            # Constants from the Windows API
+            STD_OUTPUT_HANDLE = -11
+            ENABLE_VIRTUAL_TERMINAL_PROCESSING = 0x0004
+
+            # Load the kernel32.dll
+            kernel32 = ctypes.WinDLL('kernel32', use_last_error=True)
+
+            # Get handle to the standard output
+            hStdOut = kernel32.GetStdHandle(STD_OUTPUT_HANDLE)
+            if hStdOut == ctypes.c_void_p(-1).value:
+                raise ctypes.WinError(ctypes.get_last_error())
+
+            # Get the current console mode
+            mode = ctypes.c_uint32()
+            res = kernel32.GetConsoleMode(hStdOut, ctypes.byref(mode))
+            if not res:
+                raise ctypes.WinError(ctypes.get_last_error())
+
+            # Modify the console mode to enable virtual terminal processing
+            mode.value |= ENABLE_VIRTUAL_TERMINAL_PROCESSING
+            res = kernel32.SetConsoleMode(hStdOut, mode)
+            if not res:
+                raise ctypes.WinError(ctypes.get_last_error())
+
+            print("Virtual terminal processing enabled.")
+        else:
+            print("Not running on a Windows environment.")
+
         # Open a connection to the specified serial port
         serial_port = Serial(args.port, args.baud)
+        
         print(f"Connected to serial port {args.port} at {args.baud} baud")
 
         # Start a separate thread to read data from the serial port
