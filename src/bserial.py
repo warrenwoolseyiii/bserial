@@ -1,119 +1,155 @@
-#!/usr/bin/env python3
-
-"""bserial.py - A simple command line interface for serial communication
-
-This program provides a command line interface for communicating with a serial port device. It takes two command line arguments, the name of the serial port device and the baud rate of the serial connection. It reads all incoming data from the serial port and prints it to the console, and it also allows the user to send data to the serial port by typing it into the console.
-
-Usage:
-  bserial.py [-h] -p PORT -b BAUD
-
-Options:
-  -h, --help            Show this help message and exit
-  -p PORT, --port=PORT  Name of the serial port device
-  -b BAUD, --baud=BAUD  Baud rate of the serial connection
-
-Example:
-  bserial.py -p /dev/ttyUSB0 -b 9600
-
-"""
-
-import argparse
-import threading
 import sys
-from serial import Serial
-import ctypes
-import platform
+import threading
+try:
+    from serial import Serial, SerialException
+except ImportError:
+    print("Error: pyserial is not installed. Please install it with 'pip install pyserial'.")
+    sys.exit(1)
 
-def read_serial(serial_port):
-    """Read data from the serial port and print it to the console.
+# Check for Tkinter compatibility
+try:
+    import tkinter as tk
+    from tkinter import ttk, filedialog
+except ImportError:
+    print("Error: Tkinter is not available in this environment. Please ensure it is installed.")
+    sys.exit(1)
 
-    This function reads data from the specified serial port and prints it to the console.
-    It runs in a separate thread so that it does not block the main thread.
-
-    Args:
-        serial_port (Serial): The Serial object representing the serial port to read from.
-
-    """
-    while True:
-        try:
-            if serial_port.in_waiting > 0:
-                # Read all available data from the serial port and print it to the console
-                data = serial_port.read_all().decode()
-                sys.stdout.write(data)
-                sys.stdout.flush()
-        except Exception as e:
-            # Print the exception type and the message
-            print(f"{type(e).__name__}: {e}")
-            serial_port.flush()
-
-def main(args):
-    """Main function for the bserial program.
-
-    This function is the main entry point for the bserial program. It takes command line arguments
-    specifying the serial port device and baud rate, and then opens a connection to the device and
-    starts a separate thread to read data from the serial port. It also allows the user to send data
-    to the serial port by typing it into the console.
-
-    Args:
-        args (Namespace): A Namespace object containing the command line arguments.
-
-    """
-    try:
-        # Check if the script is running on Windows
-        if platform.system() == 'Windows':
-            # Constants from the Windows API
-            STD_OUTPUT_HANDLE = -11
-            ENABLE_VIRTUAL_TERMINAL_PROCESSING = 0x0004
-
-            # Load the kernel32.dll
-            kernel32 = ctypes.WinDLL('kernel32', use_last_error=True)
-
-            # Get handle to the standard output
-            hStdOut = kernel32.GetStdHandle(STD_OUTPUT_HANDLE)
-            if hStdOut == ctypes.c_void_p(-1).value:
-                raise ctypes.WinError(ctypes.get_last_error())
-
-            # Get the current console mode
-            mode = ctypes.c_uint32()
-            res = kernel32.GetConsoleMode(hStdOut, ctypes.byref(mode))
-            if not res:
-                raise ctypes.WinError(ctypes.get_last_error())
-
-            # Modify the console mode to enable virtual terminal processing
-            mode.value |= ENABLE_VIRTUAL_TERMINAL_PROCESSING
-            res = kernel32.SetConsoleMode(hStdOut, mode)
-            if not res:
-                raise ctypes.WinError(ctypes.get_last_error())
-
-            print("Virtual terminal processing enabled.")
-        else:
-            print("Not running on a Windows environment.")
-
-        # Open a connection to the specified serial port
-        serial_port = Serial(args.port, args.baud)
+class SerialTerminalApp:
+    def __init__(self, root):
+        self.root = root
+        self.root.title("Serial Terminal")
         
-        print(f"Connected to serial port {args.port} at {args.baud} baud")
+        # Serial port and configuration
+        self.serial_port = None
+        self.connected = False
+        
+        # UI Elements
+        self.create_widgets()
+        
+    def create_widgets(self):
+        # Frame for configuration
+        config_frame = ttk.LabelFrame(self.root, text="Configuration")
+        config_frame.grid(row=0, column=0, padx=10, pady=10, sticky="ew")
 
-        # Start a separate thread to read data from the serial port
-        thread = threading.Thread(target=read_serial, args=(serial_port,), daemon=True)
-        thread.start()
+        # Port selection
+        ttk.Label(config_frame, text="Port:").grid(row=0, column=0, sticky="w")
+        self.port_var = tk.StringVar()
+        self.port_entry = ttk.Entry(config_frame, textvariable=self.port_var)
+        self.port_entry.grid(row=0, column=1, padx=5)
 
-        # Read input from the console and send it to the serial port
-        while True:
-            input_data = input()
-            serial_port.write(input_data.encode())
-    except Exception as e:
-        print(f"Failed to connect to serial port {args.port} at {args.baud} baud")
-        print(e)
+        # Baud rate selection
+        ttk.Label(config_frame, text="Baud Rate:").grid(row=0, column=2, sticky="w")
+        self.baud_var = tk.StringVar(value="9600")
+        self.baud_entry = ttk.Entry(config_frame, textvariable=self.baud_var)
+        self.baud_entry.grid(row=0, column=3, padx=5)
 
-if __name__ == '__main__':
-    parser = argparse.ArgumentParser(description='Read from and write to a serial port')
-    parser.add_argument('-p', '--port', help='Serial port name')
-    parser.add_argument('-b', '--baud', type=int, help='Baud rate')
-    args = parser.parse_args()
+        # Connect and Disconnect buttons
+        self.connect_button = ttk.Button(config_frame, text="Connect", command=self.connect_serial)
+        self.connect_button.grid(row=0, column=4, padx=5)
+        self.disconnect_button = ttk.Button(config_frame, text="Disconnect", command=self.disconnect_serial, state="disabled")
+        self.disconnect_button.grid(row=0, column=5, padx=5)
 
-    if args.port is None or args.baud is None:
-        parser.print_usage()
-        sys.exit(1)
+        # Frame for console output
+        console_frame = ttk.LabelFrame(self.root, text="Console Output")
+        console_frame.grid(row=1, column=0, padx=10, pady=10, sticky="nsew")
 
-    main(args)
+        self.output_text = tk.Text(console_frame, height=20, wrap="word", state="disabled")
+        self.output_text.pack(fill="both", expand=True)
+
+        # Frame for input and actions
+        action_frame = ttk.LabelFrame(self.root, text="Actions")
+        action_frame.grid(row=2, column=0, padx=10, pady=10, sticky="ew")
+
+        # Input field
+        ttk.Label(action_frame, text="Input:").grid(row=0, column=0, sticky="w")
+        self.input_var = tk.StringVar()
+        self.input_entry = ttk.Entry(action_frame, textvariable=self.input_var)
+        self.input_entry.grid(row=0, column=1, padx=5, sticky="ew")
+        self.input_entry.bind("<Return>", lambda event: self.send_data_threaded())
+
+        # Send button
+        self.send_button = ttk.Button(action_frame, text="Send", command=self.send_data_threaded, state="disabled")
+        self.send_button.grid(row=0, column=2, padx=5)
+
+        # File logging
+        self.log_var = tk.BooleanVar()
+        self.log_checkbox = ttk.Checkbutton(action_frame, text="Log to File", variable=self.log_var)
+        self.log_checkbox.grid(row=1, column=0, sticky="w")
+
+        self.log_button = ttk.Button(action_frame, text="Select Log File", command=self.select_log_file, state="disabled")
+        self.log_button.grid(row=1, column=1, padx=5, sticky="w")
+
+        # Layout adjustments
+        self.root.columnconfigure(0, weight=1)
+        action_frame.columnconfigure(1, weight=1)
+
+    def connect_serial(self):
+        port = self.port_var.get()
+        baud = self.baud_var.get()
+        try:
+            self.serial_port = Serial(port, baudrate=int(baud), timeout=1)
+            self.connected = True
+            self.connect_button.config(state="disabled")
+            self.disconnect_button.config(state="normal")
+            self.send_button.config(state="normal")
+            self.log_button.config(state="normal")
+            
+            # Start the thread for reading data
+            self.read_thread = threading.Thread(target=self.read_serial, daemon=True)
+            self.read_thread.start()
+            
+            self.log_message(f"Connected to {port} at {baud} baud.")
+        except SerialException as e:
+            self.log_message(f"Error: {e}")
+        except ValueError:
+            self.log_message("Error: Invalid baud rate. Please enter a valid number.")
+
+    def disconnect_serial(self):
+        if self.serial_port and self.serial_port.is_open:
+            self.serial_port.close()
+        self.connected = False
+        self.connect_button.config(state="normal")
+        self.disconnect_button.config(state="disabled")
+        self.send_button.config(state="disabled")
+        self.log_button.config(state="disabled")
+        self.log_message("Disconnected.")
+
+    def read_serial(self):
+        while self.connected:
+            try:
+                if self.serial_port.in_waiting > 0:
+                    data = self.serial_port.read_all().decode(errors="ignore")
+                    self.log_message(data)
+            except Exception as e:
+                self.log_message(f"Error: {e}")
+                break
+
+    def send_data(self):
+        try:
+            if self.serial_port and self.serial_port.is_open:
+                data = self.input_var.get() + "\n"
+                self.serial_port.write(data.encode())
+                self.log_message(f"Sent: {data}")
+                self.input_var.set("")
+        except Exception as e:
+            self.log_message(f"Error sending data: {e}")
+
+    def send_data_threaded(self):
+        send_thread = threading.Thread(target=self.send_data)
+        send_thread.start()
+
+    def log_message(self, message):
+        self.output_text.config(state="normal")
+        self.output_text.insert("end", message + "\n")
+        self.output_text.config(state="disabled")
+        self.output_text.see("end")
+
+    def select_log_file(self):
+        file_path = filedialog.asksaveasfilename(defaultextension=".txt", filetypes=[("Text files", "*.txt")])
+        if file_path:
+            self.log_message(f"Logging to: {file_path}")
+
+if __name__ == "__main__":
+    root = tk.Tk()
+    app = SerialTerminalApp(root)
+    root.mainloop()
