@@ -22,6 +22,8 @@ class SerialTerminalApp:
         # Serial port and configuration
         self.serial_port = None
         self.connected = False
+        self.enable_newline = tk.BooleanVar(value=True)
+        self.enable_linefeed = tk.BooleanVar(value=False)
         
         # UI Elements
         self.create_widgets()
@@ -71,13 +73,21 @@ class SerialTerminalApp:
         self.send_button = ttk.Button(action_frame, text="Send", command=self.send_data_threaded, state="disabled")
         self.send_button.grid(row=0, column=2, padx=5)
 
+        # Line feed checkbox
+        self.newline_checkbox = ttk.Checkbutton(action_frame, text="Enable Newline", variable=self.enable_newline)
+        self.newline_checkbox.grid(row=1, column=0, sticky="w")
+
+        # Carraiage return checkbox
+        self.linefeed_checkbox = ttk.Checkbutton(action_frame, text="Enable Linefeed", variable=self.enable_linefeed)
+        self.linefeed_checkbox.grid(row=1, column=1, sticky="w")
+
         # File logging
         self.log_var = tk.BooleanVar()
         self.log_checkbox = ttk.Checkbutton(action_frame, text="Log to File", variable=self.log_var)
-        self.log_checkbox.grid(row=1, column=0, sticky="w")
+        self.log_checkbox.grid(row=2, column=0, sticky="w")
 
         self.log_button = ttk.Button(action_frame, text="Select Log File", command=self.select_log_file, state="disabled")
-        self.log_button.grid(row=1, column=1, padx=5, sticky="w")
+        self.log_button.grid(row=2, column=1, padx=5, sticky="w")
 
         # Layout adjustments
         self.root.columnconfigure(0, weight=1)
@@ -127,7 +137,11 @@ class SerialTerminalApp:
     def send_data(self):
         try:
             if self.serial_port and self.serial_port.is_open:
-                data = self.input_var.get() + "\n"
+                data = self.input_var.get()
+                if self.enable_linefeed.get():
+                    data += "\r"
+                if self.enable_newline.get():
+                    data += "\n"
                 self.serial_port.write(data.encode())
                 self.log_message(f"Sent: {data}")
                 self.input_var.set("")
