@@ -1,5 +1,6 @@
 import sys
 import threading
+import re
 try:
     from serial import Serial, SerialException
 except ImportError:
@@ -23,6 +24,7 @@ class SerialTerminalApp:
         self.serial_port = None
         self.connected = False
         self.enable_newline = tk.BooleanVar(value=True)
+        self.enable_carriage_return = tk.BooleanVar(value=False)
         
         # UI Elements
         self.create_widgets()
@@ -54,7 +56,7 @@ class SerialTerminalApp:
         console_frame = ttk.LabelFrame(self.root, text="Console Output")
         console_frame.grid(row=1, column=0, padx=10, pady=10, sticky="nsew")
 
-        self.output_text = tk.Text(console_frame, wrap="word", state="disabled")
+        self.output_text = tk.Text(console_frame, wrap="word", state="disabled", bg="black", fg="white", font=("Courier", 10, "bold"))
         self.output_text.pack(fill="both", expand=True)
 
         # Frame for input and actions
@@ -72,9 +74,13 @@ class SerialTerminalApp:
         self.send_button = ttk.Button(action_frame, text="Send", command=self.send_data_threaded, state="disabled")
         self.send_button.grid(row=0, column=2, padx=5)
 
-        # Line feed and carriage return checkbox
-        self.newline_checkbox = ttk.Checkbutton(action_frame, text="Enable Newline/CR", variable=self.enable_newline)
+        # Line feed checkbox
+        self.newline_checkbox = ttk.Checkbutton(action_frame, text="Enable Newline", variable=self.enable_newline)
         self.newline_checkbox.grid(row=1, column=0, sticky="w")
+
+        # Carriage return checkbox
+        self.cr_checkbox = ttk.Checkbutton(action_frame, text="Enable CR", variable=self.enable_carriage_return)
+        self.cr_checkbox.grid(row=1, column=1, sticky="w")
 
         # File logging
         self.log_var = tk.BooleanVar()
@@ -129,17 +135,68 @@ class SerialTerminalApp:
                     buffer += self.serial_port.read(self.serial_port.in_waiting).decode(errors="ignore")
                     while "\n" in buffer:
                         line, buffer = buffer.split("\n", 1)
-                        self.log_message(line)
+                        self.process_ansi_colored_line(line)
             except Exception as e:
                 self.log_message(f"Error: {e}")
                 break
+
+    def process_ansi_colored_line(self, line):
+        cursor = 0
+        ansi_escape = re.compile(r'(\x1B\[[0-?]*[ -/]*[@-~])')
+        matches = list(ansi_escape.finditer(line))
+
+        for match in matches:
+            start, end = match.span()
+            if start > cursor:
+                self.output_text.config(state="normal")
+                self.output_text.insert("end", line[cursor:start])
+                self.output_text.config(state="disabled")
+            cursor = end  # Move past the ANSI sequence
+
+        # Add remaining text if there's no more ANSI sequence
+        if cursor < len(line):
+            self.output_text.config(state="normal")
+            self.output_text.insert("end", line[cursor:] + "\n")
+            self.output_text.config(state="disabled")
+
+    def apply_ansi_codes(self, codes):
+        for code in map(int, codes):
+            if code == 0:
+                self.output_text.tag_configure("default", foreground="white", font=("Courier", 10, "bold"))
+                self.output_text.tag_add("default", "end-1c", "end")
+            elif code == 30:
+                self.output_text.tag_configure("black", foreground="black")
+                self.output_text.tag_add("black", "end-1c", "end")
+            elif code == 31:
+                self.output_text.tag_configure("red", foreground="red")
+                self.output_text.tag_add("red", "end-1c", "end")
+            elif code == 32:
+                self.output_text.tag_configure("green", foreground="green")
+                self.output_text.tag_add("green", "end-1c", "end")
+            elif code == 33:
+                self.output_text.tag_configure("yellow", foreground="yellow")
+                self.output_text.tag_add("yellow", "end-1c", "end")
+            elif code == 34:
+                self.output_text.tag_configure("blue", foreground="blue")
+                self.output_text.tag_add("blue", "end-1c", "end")
+            elif code == 35:
+                self.output_text.tag_configure("magenta", foreground="magenta")
+                self.output_text.tag_add("magenta", "end-1c", "end")
+            elif code == 36:
+                self.output_text.tag_configure("cyan", foreground="cyan")
+                self.output_text.tag_add("cyan", "end-1c", "end")
+            elif code == 37:
+                self.output_text.tag_configure("white", foreground="white")
+                self.output_text.tag_add("white", "end-1c", "end")
 
     def send_data(self):
         try:
             if self.serial_port and self.serial_port.is_open:
                 data = self.input_var.get()
+                if self.enable_carriage_return.get():
+                    data += "\r"
                 if self.enable_newline.get():
-                    data += "\r\n"
+                    data += "\n"
                 self.serial_port.write(data.encode())
                 self.log_message(f"Sent: {data}")
                 self.input_var.set("")
