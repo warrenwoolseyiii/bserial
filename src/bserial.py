@@ -23,7 +23,6 @@ class SerialTerminalApp:
         self.serial_port = None
         self.connected = False
         self.enable_newline = tk.BooleanVar(value=True)
-        self.enable_linefeed = tk.BooleanVar(value=False)
         
         # UI Elements
         self.create_widgets()
@@ -55,7 +54,7 @@ class SerialTerminalApp:
         console_frame = ttk.LabelFrame(self.root, text="Console Output")
         console_frame.grid(row=1, column=0, padx=10, pady=10, sticky="nsew")
 
-        self.output_text = tk.Text(console_frame, height=20, wrap="word", state="disabled")
+        self.output_text = tk.Text(console_frame, wrap="word", state="disabled")
         self.output_text.pack(fill="both", expand=True)
 
         # Frame for input and actions
@@ -73,13 +72,9 @@ class SerialTerminalApp:
         self.send_button = ttk.Button(action_frame, text="Send", command=self.send_data_threaded, state="disabled")
         self.send_button.grid(row=0, column=2, padx=5)
 
-        # Line feed checkbox
-        self.newline_checkbox = ttk.Checkbutton(action_frame, text="Enable Newline", variable=self.enable_newline)
+        # Line feed and carriage return checkbox
+        self.newline_checkbox = ttk.Checkbutton(action_frame, text="Enable Newline/CR", variable=self.enable_newline)
         self.newline_checkbox.grid(row=1, column=0, sticky="w")
-
-        # Carraiage return checkbox
-        self.linefeed_checkbox = ttk.Checkbutton(action_frame, text="Enable Linefeed", variable=self.enable_linefeed)
-        self.linefeed_checkbox.grid(row=1, column=1, sticky="w")
 
         # File logging
         self.log_var = tk.BooleanVar()
@@ -91,6 +86,8 @@ class SerialTerminalApp:
 
         # Layout adjustments
         self.root.columnconfigure(0, weight=1)
+        self.root.rowconfigure(1, weight=1)  # Allow console output to scale with the window
+        console_frame.columnconfigure(0, weight=1)
         action_frame.columnconfigure(1, weight=1)
 
     def connect_serial(self):
@@ -125,11 +122,14 @@ class SerialTerminalApp:
         self.log_message("Disconnected.")
 
     def read_serial(self):
+        buffer = ""
         while self.connected:
             try:
                 if self.serial_port.in_waiting > 0:
-                    data = self.serial_port.read_all().decode(errors="ignore")
-                    self.log_message(data)
+                    buffer += self.serial_port.read(self.serial_port.in_waiting).decode(errors="ignore")
+                    while "\n" in buffer:
+                        line, buffer = buffer.split("\n", 1)
+                        self.log_message(line)
             except Exception as e:
                 self.log_message(f"Error: {e}")
                 break
@@ -138,10 +138,8 @@ class SerialTerminalApp:
         try:
             if self.serial_port and self.serial_port.is_open:
                 data = self.input_var.get()
-                if self.enable_linefeed.get():
-                    data += "\r"
                 if self.enable_newline.get():
-                    data += "\n"
+                    data += "\r\n"
                 self.serial_port.write(data.encode())
                 self.log_message(f"Sent: {data}")
                 self.input_var.set("")
