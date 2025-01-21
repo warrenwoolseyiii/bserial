@@ -25,6 +25,7 @@ class SerialTerminalApp:
         self.connected = False
         self.enable_newline = tk.BooleanVar(value=True)
         self.enable_carriage_return = tk.BooleanVar(value=False)
+        self.log_file_path = None
         
         # UI Elements
         self.create_widgets()
@@ -74,17 +75,17 @@ class SerialTerminalApp:
         self.send_button = ttk.Button(action_frame, text="Send", command=self.send_data_threaded, state="disabled")
         self.send_button.grid(row=0, column=2, padx=5)
 
-        # Line feed checkbox
-        self.newline_checkbox = ttk.Checkbutton(action_frame, text="Enable Newline", variable=self.enable_newline)
+        # Line feed and carriage return checkbox
+        self.newline_checkbox = ttk.Checkbutton(action_frame, text="Enable Newline/CR", variable=self.enable_newline)
         self.newline_checkbox.grid(row=1, column=0, sticky="w")
 
-        # Carriage return checkbox
+        # Line feed and carriage return checkbox
         self.cr_checkbox = ttk.Checkbutton(action_frame, text="Enable CR", variable=self.enable_carriage_return)
         self.cr_checkbox.grid(row=1, column=1, sticky="w")
 
         # File logging
         self.log_var = tk.BooleanVar()
-        self.log_checkbox = ttk.Checkbutton(action_frame, text="Log to File", variable=self.log_var)
+        self.log_checkbox = ttk.Checkbutton(action_frame, text="Log to File", variable=self.log_var, command=self.toggle_log_file)
         self.log_checkbox.grid(row=2, column=0, sticky="w")
 
         self.log_button = ttk.Button(action_frame, text="Select Log File", command=self.select_log_file, state="disabled")
@@ -136,6 +137,7 @@ class SerialTerminalApp:
                     while "\n" in buffer:
                         line, buffer = buffer.split("\n", 1)
                         self.process_ansi_colored_line(line)
+                        self.log_to_file(line)
             except Exception as e:
                 self.log_message(f"Error: {e}")
                 break
@@ -157,6 +159,7 @@ class SerialTerminalApp:
         if cursor < len(line):
             self.output_text.config(state="normal")
             self.output_text.insert("end", line[cursor:] + "\n")
+            self.output_text.see("end")  # Automatically scroll to the end
             self.output_text.config(state="disabled")
 
     def apply_ansi_codes(self, codes):
@@ -199,6 +202,7 @@ class SerialTerminalApp:
                     data += "\n"
                 self.serial_port.write(data.encode())
                 self.log_message(f"Sent: {data}")
+                self.log_to_file(f"Sent: {data}")
                 self.input_var.set("")
         except Exception as e:
             self.log_message(f"Error sending data: {e}")
@@ -212,11 +216,25 @@ class SerialTerminalApp:
         self.output_text.insert("end", message + "\n")
         self.output_text.config(state="disabled")
         self.output_text.see("end")
+        self.log_to_file(message)
+
+    def log_to_file(self, message):
+        if self.log_var.get() and self.log_file_path:
+            try:
+                with open(self.log_file_path, "a") as log_file:
+                    log_file.write(message + "\n")
+            except Exception as e:
+                self.log_message(f"Error writing to log file: {e}")
 
     def select_log_file(self):
         file_path = filedialog.asksaveasfilename(defaultextension=".txt", filetypes=[("Text files", "*.txt")])
         if file_path:
+            self.log_file_path = file_path
             self.log_message(f"Logging to: {file_path}")
+
+    def toggle_log_file(self):
+        if self.log_var.get() and not self.log_file_path:
+            self.select_log_file()
 
 if __name__ == "__main__":
     root = tk.Tk()
