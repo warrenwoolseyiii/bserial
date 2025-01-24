@@ -144,53 +144,91 @@ class SerialTerminalApp:
 
     def process_ansi_colored_line(self, line):
         cursor = 0
-        ansi_escape = re.compile(r'(\x1B\[[0-?]*[ -/]*[@-~])')
-        matches = list(ansi_escape.finditer(line))
+        ansi_escape = re.compile(r'\x1B\[(\d+)(;\d+)*m')
+        self.output_text.config(state="normal")
 
-        for match in matches:
+        print(f"Processing line: {line}")
+
+        for match in ansi_escape.finditer(line):
             start, end = match.span()
+            print(f"Found ANSI escape sequence from {start} to {end}: {match.group(0)}")
+
+            # Insert plain text before the ANSI sequence
             if start > cursor:
-                self.output_text.config(state="normal")
-                self.output_text.insert("end", line[cursor:start])
-                self.output_text.config(state="disabled")
-            cursor = end  # Move past the ANSI sequence
+                text_to_insert = line[cursor:start]
+                print(f"Inserting plain text: {text_to_insert}")
+                self.output_text.insert("end", text_to_insert)
 
-        # Add remaining text if there's no more ANSI sequence
+            # Extract the desired parameter (33 in this case)
+            parameters = match.group(0).split('[')[1].split('m')[0].split(';')
+            if len(parameters) > 1:
+                desired_code = parameters[1]
+                print(f"Extracted code: {desired_code}")
+                # Convert the code to an integer
+                try:
+                    desired_code = int(desired_code)
+                except ValueError:
+                    print(f"Invalid code: {desired_code}")
+                    continue
+
+            # Apply color to the text "SYS"
+            colored_text = line[end:].split('m')[0]
+            # Remove the trailing '[' if there is one
+            if colored_text.endswith('['):
+                colored_text = colored_text[:-1]
+            print(f"Applying color to text: {colored_text}")
+            # Get the current index of the cursor to pass to the tag_add method
+            tag = "yellow"#self.apply_ansi_codes(desired_code)
+            current_index = self.output_text.index("end-1c")
+            self.output_text.insert("end", colored_text)
+            self.output_text.tag_add(colored_text, current_index, "end")
+            self.output_text.tag_configure(colored_text, foreground=tag)
+
+            # Remove the ANSI escape sequence and the text inside the brackets
+            line = line[end + len(colored_text) + 3:]
+            cursor = 0
+
+        # Insert remaining text
         if cursor < len(line):
-            self.output_text.config(state="normal")
-            self.output_text.insert("end", line[cursor:] + "\n")
-            self.output_text.see("end")  # Automatically scroll to the end
-            self.output_text.config(state="disabled")
+            remaining_text = line[cursor:]
+            print(f"Inserting remaining text: {remaining_text}")
+            self.output_text.insert("end", remaining_text)
 
-    def apply_ansi_codes(self, codes):
-        for code in map(int, codes):
-            if code == 0:
-                self.output_text.tag_configure("default", foreground="white", font=("Courier", 10, "bold"))
-                self.output_text.tag_add("default", "end-1c", "end")
-            elif code == 30:
-                self.output_text.tag_configure("black", foreground="black")
-                self.output_text.tag_add("black", "end-1c", "end")
-            elif code == 31:
-                self.output_text.tag_configure("red", foreground="red")
-                self.output_text.tag_add("red", "end-1c", "end")
-            elif code == 32:
-                self.output_text.tag_configure("green", foreground="green")
-                self.output_text.tag_add("green", "end-1c", "end")
-            elif code == 33:
-                self.output_text.tag_configure("yellow", foreground="yellow")
-                self.output_text.tag_add("yellow", "end-1c", "end")
-            elif code == 34:
-                self.output_text.tag_configure("blue", foreground="blue")
-                self.output_text.tag_add("blue", "end-1c", "end")
-            elif code == 35:
-                self.output_text.tag_configure("magenta", foreground="magenta")
-                self.output_text.tag_add("magenta", "end-1c", "end")
-            elif code == 36:
-                self.output_text.tag_configure("cyan", foreground="cyan")
-                self.output_text.tag_add("cyan", "end-1c", "end")
-            elif code == 37:
-                self.output_text.tag_configure("white", foreground="white")
-                self.output_text.tag_add("white", "end-1c", "end")
+        self.output_text.insert("end", "\n")
+        self.output_text.see("end")
+        self.output_text.config(state="disabled")
+
+    def apply_ansi_codes(self, code):
+        tag_name = None
+        if code == 0:
+            tag_name = "white"
+            #self.output_text.tag_configure(tag_name, foreground="white", font=("Courier", 10, "bold"))
+        elif code == 30:
+            tag_name = "black"
+            #self.output_text.tag_configure(tag_name, foreground="black")
+        elif code == 31:
+            tag_name = "red"
+            #self.output_text.tag_configure(tag_name, foreground="red")
+        elif code == 32:
+            tag_name = "green"
+            #self.output_text.tag_configure(tag_name, foreground="green")
+        elif code == 33:
+            tag_name = "yellow"
+            #self.output_text.tag_configure("SYS", foreground="yellow")
+        elif code == 34:
+            tag_name = "blue"
+            #self.output_text.tag_configure(tag_name, foreground="blue")
+        elif code == 35:
+            tag_name = "magenta"
+            #self.output_text.tag_configure(tag_name, foreground="magenta")
+        elif code == 36:
+            tag_name = "cyan"
+            #self.output_text.tag_configure(tag_name, foreground="cyan")
+        elif code == 37:
+            tag_name = "white"
+            #self.output_text.tag_configure(tag_name, foreground="white")
+
+        return tag_name
 
     def send_data(self):
         try:
