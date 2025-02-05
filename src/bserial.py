@@ -78,7 +78,7 @@ class SerialTerminalApp:
         self.send_button.grid(row=0, column=2, padx=5)
 
         # Line feed and carriage return checkbox
-        self.newline_checkbox = ttk.Checkbutton(action_frame, text="Enable Newline/CR", variable=self.enable_newline)
+        self.newline_checkbox = ttk.Checkbutton(action_frame, text="Enable Newline", variable=self.enable_newline)
         self.newline_checkbox.grid(row=1, column=0, sticky="w")
 
         # Line feed and carriage return checkbox
