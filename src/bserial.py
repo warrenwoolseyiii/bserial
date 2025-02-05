@@ -11,6 +11,7 @@ except ImportError:
 try:
     import tkinter as tk
     from tkinter import ttk, filedialog
+    import glob
 except ImportError:
     print("Error: Tkinter is not available in this environment. Please ensure it is installed.")
     sys.exit(1)
@@ -38,8 +39,9 @@ class SerialTerminalApp:
         # Port selection
         ttk.Label(config_frame, text="Port:").grid(row=0, column=0, sticky="w")
         self.port_var = tk.StringVar()
-        self.port_entry = ttk.Entry(config_frame, textvariable=self.port_var)
-        self.port_entry.grid(row=0, column=1, padx=5)
+        self.port_combobox = ttk.Combobox(config_frame, textvariable=self.port_var)
+        self.port_combobox.grid(row=0, column=1, padx=5)
+        self.update_ports()
 
         # Baud rate selection
         ttk.Label(config_frame, text="Baud Rate:").grid(row=0, column=2, sticky="w")
@@ -96,6 +98,20 @@ class SerialTerminalApp:
         self.root.rowconfigure(1, weight=1)  # Allow console output to scale with the window
         console_frame.columnconfigure(0, weight=1)
         action_frame.columnconfigure(1, weight=1)
+
+    def update_ports(self):
+        """Update the list of available serial ports."""
+        try:
+            if sys.platform.startswith('win'):
+                available_ports = [f'COM{i + 1}' for i in range(256)]
+            else:
+                available_ports = glob.glob('/dev/tty.[A-Za-z]*')
+
+            self.port_combobox['values'] = available_ports
+            if available_ports:
+                self.port_combobox.current(0)
+        except Exception as e:
+            self.log_message(f"Error updating ports: {e}")
 
     def connect_serial(self):
         port = self.port_var.get()
