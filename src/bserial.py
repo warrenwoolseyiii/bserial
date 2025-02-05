@@ -143,92 +143,92 @@ class SerialTerminalApp:
                 break
 
     def process_ansi_colored_line(self, line):
-        cursor = 0
-        ansi_escape = re.compile(r'\x1B\[(\d+)(;\d+)*m')
+        """Processes a line with ANSI color codes and applies a single color to the whole line."""
+        ansi_escape = re.compile(r'\x1B\[[0-9;]*m')  # Regex for all ANSI color codes
         self.output_text.config(state="normal")
 
-        print(f"Processing line: {line}")
+        print(f"\n[DEBUG] Processing line: {line}")
 
-        for match in ansi_escape.finditer(line):
-            start, end = match.span()
-            print(f"Found ANSI escape sequence from {start} to {end}: {match.group(0)}")
+        # Find the first ANSI escape sequence in the line
+        match = ansi_escape.search(line)
+        active_tag = "white"  # Default text color
 
-            # Insert plain text before the ANSI sequence
-            if start > cursor:
-                text_to_insert = line[cursor:start]
-                print(f"Inserting plain text: {text_to_insert}")
-                self.output_text.insert("end", text_to_insert)
+        if match:
+            ansi_code = match.group(0)  # Extract ANSI escape sequence
+            print(f"[DEBUG] Found ANSI escape sequence: {ansi_code}")
 
-            # Extract the desired parameter (33 in this case)
-            parameters = match.group(0).split('[')[1].split('m')[0].split(';')
-            if len(parameters) > 1:
-                desired_code = parameters[1]
-                print(f"Extracted code: {desired_code}")
-                # Convert the code to an integer
-                try:
-                    desired_code = int(desired_code)
-                except ValueError:
-                    print(f"Invalid code: {desired_code}")
-                    continue
+            color_code = self.extract_color_code(ansi_code)  # Convert to numeric code
+            if color_code:
+                active_tag = self.apply_ansi_codes(color_code)
+                print(f"[DEBUG] Applying color tag: {active_tag} (from ANSI code {color_code})")
+            else:
+                print("[DEBUG] No valid ANSI color code found, using default white.")
 
-            # Apply color to the text "SYS"
-            colored_text = line[end:].split('m')[0]
-            # Remove the trailing '[' if there is one
-            if colored_text.endswith('['):
-                colored_text = colored_text[:-1]
-            print(f"Applying color to text: {colored_text}")
-            # Get the current index of the cursor to pass to the tag_add method
-            tag = "yellow"#self.apply_ansi_codes(desired_code)
-            current_index = self.output_text.index("end-1c")
-            self.output_text.insert("end", colored_text)
-            self.output_text.tag_add(colored_text, current_index, "end")
-            self.output_text.tag_configure(colored_text, foreground=tag)
+        # Remove all ANSI escape sequences from the text
+        clean_line = ansi_escape.sub("", line).strip()
+        print(f"[DEBUG] Cleaned line (without ANSI codes): {clean_line}")
 
-            # Remove the ANSI escape sequence and the text inside the brackets
-            line = line[end + len(colored_text) + 3:]
-            cursor = 0
+        # Ensure the tag exists before applying
+        self.ensure_tag_configured(active_tag)
 
-        # Insert remaining text
-        if cursor < len(line):
-            remaining_text = line[cursor:]
-            print(f"Inserting remaining text: {remaining_text}")
-            self.output_text.insert("end", remaining_text)
+        # Insert the entire cleaned line with the detected color
+        print(f"[DEBUG] Inserting line with tag: {active_tag}")
+        self.output_text.insert("end", clean_line + "\n", active_tag)
 
-        self.output_text.insert("end", "\n")
         self.output_text.see("end")
         self.output_text.config(state="disabled")
 
-    def apply_ansi_codes(self, code):
-        tag_name = None
-        if code == 0:
-            tag_name = "white"
-            #self.output_text.tag_configure(tag_name, foreground="white", font=("Courier", 10, "bold"))
-        elif code == 30:
-            tag_name = "black"
-            #self.output_text.tag_configure(tag_name, foreground="black")
-        elif code == 31:
-            tag_name = "red"
-            #self.output_text.tag_configure(tag_name, foreground="red")
-        elif code == 32:
-            tag_name = "green"
-            #self.output_text.tag_configure(tag_name, foreground="green")
-        elif code == 33:
-            tag_name = "yellow"
-            #self.output_text.tag_configure("SYS", foreground="yellow")
-        elif code == 34:
-            tag_name = "blue"
-            #self.output_text.tag_configure(tag_name, foreground="blue")
-        elif code == 35:
-            tag_name = "magenta"
-            #self.output_text.tag_configure(tag_name, foreground="magenta")
-        elif code == 36:
-            tag_name = "cyan"
-            #self.output_text.tag_configure(tag_name, foreground="cyan")
-        elif code == 37:
-            tag_name = "white"
-            #self.output_text.tag_configure(tag_name, foreground="white")
+    def extract_color_code(self, ansi_sequence):
+        """Extracts the main ANSI color code from an ANSI escape sequence."""
+        print(f"[DEBUG] Extracting color code from ANSI sequence: {ansi_sequence}")
+        
+        codes = [int(x) for x in re.findall(r'\d+', ansi_sequence)]  # Extract numeric values
+        print(f"[DEBUG] Parsed ANSI codes: {codes}")
 
-        return tag_name
+        # Check for standard and bright colors
+        for code in codes:
+            if 90 <= code <= 97 or 30 <= code <= 37:
+                print(f"[DEBUG] Found valid color code: {code}")
+                return code
+
+        print("[DEBUG] No valid ANSI color code found in sequence.")
+        return None  # No valid color found
+
+    def apply_ansi_codes(self, code):
+        """Maps ANSI color codes to text widget tags."""
+        ansi_color_map = {
+            0: "white",
+            30: "black",
+            31: "red",
+            32: "green",
+            33: "yellow",
+            34: "blue",
+            35: "magenta",
+            36: "cyan",
+            37: "white",
+            90: "bright_black",
+            91: "bright_red",
+            92: "bright_green",
+            93: "bright_yellow",
+            94: "bright_blue",
+            95: "bright_magenta",
+            96: "bright_cyan",
+            97: "bright_white"
+        }
+
+        tag = ansi_color_map.get(code, "white")
+        print(f"[DEBUG] Mapped ANSI code {code} to tag: {tag}")
+        return tag
+
+    def ensure_tag_configured(self, tag):
+        """Ensures that the Tkinter Text widget has the necessary color tags configured."""
+        if not hasattr(self, "configured_tags"):
+            self.configured_tags = set()  # Keep track of configured tags
+
+        if tag not in self.configured_tags:
+            print(f"[DEBUG] Configuring new text tag: {tag}")
+            self.output_text.tag_configure(tag, foreground=tag)
+            self.configured_tags.add(tag)
 
     def send_data(self):
         try:
