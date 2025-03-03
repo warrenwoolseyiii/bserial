@@ -99,6 +99,10 @@ class SerialTerminalApp:
         console_frame.columnconfigure(0, weight=1)
         action_frame.columnconfigure(1, weight=1)
 
+        # Button to clear all text that has been stored in the display window
+        clear_button = ttk.Button(action_frame, text="Clear", command=self.clear_text)
+        clear_button.grid(row=2, column=2, padx=5)
+
     def update_ports(self):
         """Update the list of available serial ports."""
         try:
@@ -289,6 +293,11 @@ class SerialTerminalApp:
     def toggle_log_file(self):
         if self.log_var.get() and not self.log_file_path:
             self.select_log_file()
+
+    def clear_text(self):
+        self.output_text.config(state="normal")
+        self.output_text.delete("1.0", "end")
+        self.output_text.config(state="disabled")
 
 if __name__ == "__main__":
     root = tk.Tk()
