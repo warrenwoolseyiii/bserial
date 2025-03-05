@@ -120,6 +120,53 @@ class SerialTerminalApp:
         self.set_rpm_button = ttk.Button(catto_frame, text="Set RPM", command=lambda: self.send_command(f"set_rpm {self.rpm_var.get()}\n"), state="disabled")
         self.set_rpm_button.grid(row=1, column=0, padx=5, pady=5, sticky="ew")
 
+        # Button for the seek command, which will seek the endstops for the pitch motors
+        self.seek_button = ttk.Button(catto_frame, text="Seek", command=lambda: self.send_command("seek\n"), state="disabled")
+        self.seek_button.grid(row=2, column=0, padx=5, pady=5, sticky="ew")
+
+        # Button for the reboot command, which will reboot the system
+        self.reboot_button = ttk.Button(catto_frame, text="Reboot", command=lambda: self.send_command("reboot\n"), state="disabled")
+        self.reboot_button.grid(row=2, column=1, padx=5, pady=5, sticky="ew")
+
+        # Button for the status_req command, which requests the current status of the device
+        self.status_req_button = ttk.Button(catto_frame, text="Status Request", command=lambda: self.send_command("status_req\n"), state="disabled")
+        self.status_req_button.grid(row=3, column=0, padx=5, pady=5, sticky="ew")
+
+        # Text box for the set_pitch command, located to the right of the set_pitch button, default value of 0
+        self.pitch_var = tk.StringVar(value="0")
+        self.pitch_entry = ttk.Entry(catto_frame, textvariable=self.pitch_var)
+        self.pitch_entry.grid(row=4, column=1, padx=5, pady=5, sticky="ew")
+
+        # Button for the set_pitch command, located to the left of the pitch text box, use the value stored in the pitch_var. If none is provided, throw an error
+        self.set_pitch_button = ttk.Button(catto_frame, text="Set Pitch", command=lambda: self.send_command(f"set_pitch {self.pitch_var.get()}\n"), state="disabled")
+        self.set_pitch_button.grid(row=4, column=0, padx=5, pady=5, sticky="ew")
+
+        # Text box for the ls command, located to the right of the ls button, default value of ""
+        self.ls_var = tk.StringVar(value="")
+        self.ls_entry = ttk.Entry(catto_frame, textvariable=self.ls_var)
+        self.ls_entry.grid(row=5, column=1, padx=5, pady=5, sticky="ew")
+
+        # Button for the ls command, located to the left of the ls text box, use the value stored in the ls_var.
+        self.ls_button = ttk.Button(catto_frame, text="List Files", command=lambda: self.send_command(f"ls {self.ls_var.get()}\n"), state="disabled")
+        self.ls_button.grid(row=5, column=0, padx=5, pady=5, sticky="ew")
+
+        # Text box for the cat command, which will display the contents of a file, located to the right of the cat button, default value of ""
+        self.cat_var = tk.StringVar(value="")
+        self.cat_entry = ttk.Entry(catto_frame, textvariable=self.cat_var)
+        self.cat_entry.grid(row=6, column=1, padx=5, pady=5, sticky="ew")
+
+        # Button for the cat command, located to the left of the cat text box, use the value stored in the cat_var.
+        self.cat_button = ttk.Button(catto_frame, text="Cat File", command=lambda: self.send_command(f"cat {self.cat_var.get()}\n"), state="disabled")
+        self.cat_button.grid(row=6, column=0, padx=5, pady=5, sticky="ew")
+
+        # Button for the reformat command, which will reformat the filesystem
+        self.reformat_button = ttk.Button(catto_frame, text="Reformat", command=lambda: self.send_command("reformat\n"), state="disabled")
+        self.reformat_button.grid(row=7, column=0, padx=5, pady=5, sticky="ew")
+
+        # Button for the calibrate_gyro_sf command, which will null the gyro bias and calculate the scale factor
+        self.calibrate_gyro_sf_button = ttk.Button(catto_frame, text="Calibrate Gyro SF", command=lambda: self.send_command("calibrate_gyro_sf\n"), state="disabled")
+        self.calibrate_gyro_sf_button.grid(row=7, column=1, padx=5, pady=5, sticky="ew")
+
     def update_ports(self):
         """Update the list of available serial ports."""
         try:
@@ -149,7 +196,17 @@ class SerialTerminalApp:
             self.help_button.config(state="normal")
             self.rpm_entry.config(state="normal")
             self.set_rpm_button.config(state="normal")
-
+            self.seek_button.config(state="normal")
+            self.reboot_button.config(state="normal")
+            self.status_req_button.config(state="normal")
+            self.pitch_entry.config(state="normal")
+            self.set_pitch_button.config(state="normal")
+            self.ls_entry.config(state="normal")
+            self.ls_button.config(state="normal")
+            self.cat_entry.config(state="normal")
+            self.cat_button.config(state="normal")
+            self.reformat_button.config(state="normal")
+            self.calibrate_gyro_sf_button.config(state="normal")
             
             # Start the thread for reading data
             self.read_thread = threading.Thread(target=self.read_serial, daemon=True)
@@ -169,6 +226,23 @@ class SerialTerminalApp:
         self.disconnect_button.config(state="disabled")
         self.send_button.config(state="disabled")
         self.log_button.config(state="disabled")
+
+        # Disable the catto props commands
+        self.help_button.config(state="disabled")
+        self.rpm_entry.config(state="disabled")
+        self.set_rpm_button.config(state="disabled")
+        self.seek_button.config(state="disabled")
+        self.reboot_button.config(state="disabled")
+        self.status_req_button.config(state="disabled")
+        self.pitch_entry.config(state="disabled")
+        self.set_pitch_button.config(state="disabled")
+        self.ls_entry.config(state="disabled")
+        self.ls_button.config(state="disabled")
+        self.cat_entry.config(state="disabled")
+        self.cat_button.config(state="disabled")
+        self.reformat_button.config(state="disabled")
+        self.calibrate_gyro_sf_button.config(state="disabled")
+
         self.log_message("Disconnected.")
 
     def read_serial(self):
