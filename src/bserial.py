@@ -157,7 +157,6 @@ class SerialTerminalApp:
                     while "\n" in buffer:
                         line, buffer = buffer.split("\n", 1)
                         self.process_ansi_colored_line(line)
-                        self.log_to_file(line)
             except Exception as e:
                 self.log_message(f"Error: {e}")
                 break
@@ -187,6 +186,7 @@ class SerialTerminalApp:
         # Remove all ANSI escape sequences from the text
         clean_line = ansi_escape.sub("", line).strip()
         print(f"[DEBUG] Cleaned line (without ANSI codes): {clean_line}")
+        self.log_to_file(clean_line)
 
         # Ensure the tag exists before applying
         self.ensure_tag_configured(active_tag)
@@ -274,15 +274,18 @@ class SerialTerminalApp:
         self.output_text.insert("end", message + "\n")
         self.output_text.config(state="disabled")
         self.output_text.see("end")
-        self.log_to_file(message)
 
     def log_to_file(self, message):
         if self.log_var.get() and self.log_file_path:
             try:
                 with open(self.log_file_path, "a") as log_file:
+                    # Loop through the message, if you see a null terminator before the end of the message, remove it
+                    message = message.replace("\x00", "")
                     log_file.write(message + "\n")
             except Exception as e:
                 self.log_message(f"Error writing to log file: {e}")
+        else:
+            print("Logging is not enabled or no file is selected.")
 
     def select_log_file(self):
         file_path = filedialog.asksaveasfilename(defaultextension=".txt", filetypes=[("Text files", "*.txt")])
