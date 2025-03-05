@@ -103,6 +103,23 @@ class SerialTerminalApp:
         clear_button = ttk.Button(action_frame, text="Clear", command=self.clear_text)
         clear_button.grid(row=2, column=2, padx=5)
 
+        # Frame for Catto Props commands, positioned to the right of the console output
+        catto_frame = ttk.LabelFrame(self.root, text="Catto Props")
+        catto_frame.grid(row=1, column=1, padx=10, pady=10, sticky="nsew")
+
+        # Button to send the help command
+        self.help_button = ttk.Button(catto_frame, text="Help", command=lambda: self.send_command("help\n"), state="disabled")
+        self.help_button.grid(row=0, column=0, padx=5, pady=5, sticky="ew")
+
+        # Text box to for the target rpm, located to the right of the set_rpm button, default value of 4000
+        self.rpm_var = tk.StringVar(value="4000")
+        self.rpm_entry = ttk.Entry(catto_frame, textvariable=self.rpm_var)
+        self.rpm_entry.grid(row=1, column=1, padx=5, pady=5, sticky="ew")
+
+        # Button for the set_rpm command, located to the left of the target rpm text box, use the value stored in the rpm_var. If none is provided, throw an error
+        self.set_rpm_button = ttk.Button(catto_frame, text="Set RPM", command=lambda: self.send_command(f"set_rpm {self.rpm_var.get()}\n"), state="disabled")
+        self.set_rpm_button.grid(row=1, column=0, padx=5, pady=5, sticky="ew")
+
     def update_ports(self):
         """Update the list of available serial ports."""
         try:
@@ -127,6 +144,12 @@ class SerialTerminalApp:
             self.disconnect_button.config(state="normal")
             self.send_button.config(state="normal")
             self.log_button.config(state="normal")
+
+            # Enable the catto props commands
+            self.help_button.config(state="normal")
+            self.rpm_entry.config(state="normal")
+            self.set_rpm_button.config(state="normal")
+
             
             # Start the thread for reading data
             self.read_thread = threading.Thread(target=self.read_serial, daemon=True)
@@ -268,6 +291,10 @@ class SerialTerminalApp:
     def send_data_threaded(self):
         send_thread = threading.Thread(target=self.send_data)
         send_thread.start()
+
+    def send_command(self, command):
+        self.input_var.set(command)
+        self.send_data_threaded()
 
     def log_message(self, message):
         self.output_text.config(state="normal")
