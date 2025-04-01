@@ -1,6 +1,7 @@
 import sys
 import threading
 import re
+from bserial.version import get_version  # Importing version from version.py
 try:
     from serial import Serial, SerialException
 except ImportError:
@@ -19,7 +20,8 @@ except ImportError:
 class SerialTerminalApp:
     def __init__(self, root):
         self.root = root
-        self.root.title("Serial Terminal")
+        title_str = "bserial - Serial Terminal" + " v" + get_version()  # Importing version from version.py
+        self.root.title(title_str)
         
         # Serial port and configuration
         self.serial_port = None
