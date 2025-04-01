@@ -38,7 +38,7 @@ jobs:
           pyinstaller --onefile src/bserial/bserial.py --name bserial
 
       - name: Upload Executable
-        uses: actions/upload-artifact@v3.1.3
+        uses: actions/upload-pages-artifact@v3
         with:
           name: bserial-${{ runner.os }}
           path: dist/bserial*
