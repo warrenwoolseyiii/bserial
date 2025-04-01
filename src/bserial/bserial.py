@@ -1,7 +1,7 @@
 import sys
 import threading
 import re
-from version import get_version  # Importing version from version.py
+from bserial.version import get_version  # Importing version from version.py
 try:
     from serial import Serial, SerialException
 except ImportError:
