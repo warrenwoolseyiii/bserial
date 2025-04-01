@@ -54,7 +54,7 @@ jobs:
           ls -lh build
         
       - name: Upload Executable
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@8e5e3cc29b8a020bb92bc3de0649462dbfce5f0e
         with:
           name: bserial-${{ runner.os }}
           path: dist/bserial*
