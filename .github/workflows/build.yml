@@ -46,6 +46,13 @@ jobs:
         run: |
           pyinstaller --onefile src/bserial/bserial.py --name bserial
 
+      - name: Show build output
+        run: |
+          echo "Contents of dist/"
+          ls -lh dist
+          echo "Contents of build/"
+          ls -lh build
+        
       - name: Upload Executable
         uses: actions/upload-pages-artifact@v3
         with:
