@@ -11,7 +11,6 @@ setup(
     package_dir={'': 'src'},
     install_requires=[
         'pyserial',  # Required for serial communication
-        'tkinter',  # Required for GUI (Python 3.x includes tkinter by default)
         'glob',  # For file pattern matching (if needed)
     ],
     python_requires='>=3.7',
