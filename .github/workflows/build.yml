@@ -2,7 +2,7 @@ name: Build Executables
 
 on:
   push:
-    branches: [main]
+    branches: [FTR-12]
   pull_request:
     branches: [main]
 
