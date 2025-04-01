@@ -1,5 +1,5 @@
 from setuptools import setup, find_packages
-from src.version import get_version
+from src.bserial.version import get_version
 
 setup(
     name='bserial',
