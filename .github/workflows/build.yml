@@ -2,7 +2,9 @@ name: Build Executables
 
 on:
   push:
-    branches: [FTR-12]
+    branches:
+      - main
+      - Catto-Props-GUI
   pull_request:
     branches: [main]
 
