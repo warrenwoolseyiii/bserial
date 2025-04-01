@@ -2,7 +2,7 @@ name: Build Executables
 
 on:
   push:
-    branches: [FTR-12]
+    branches: [main]
   pull_request:
     branches: [main]
 
@@ -21,6 +21,15 @@ jobs:
       - name: Install Tkinter on Linux
         if: runner.os == 'Linux'
         run: sudo apt-get update && sudo apt-get install -y python3-tk
+
+      - name: Install Tcl/Tk on macOS
+        if: runner.os == 'macOS'
+        run: |
+          brew install tcl-tk
+          echo "PATH=/opt/homebrew/opt/tcl-tk/bin:$PATH" >> $GITHUB_ENV
+          echo "LDFLAGS=-L/opt/homebrew/opt/tcl-tk/lib" >> $GITHUB_ENV
+          echo "CPPFLAGS=-I/opt/homebrew/opt/tcl-tk/include" >> $GITHUB_ENV
+          echo "PKG_CONFIG_PATH=/opt/homebrew/opt/tcl-tk/lib/pkgconfig" >> $GITHUB_ENV
 
       - name: Set up Python
         uses: actions/setup-python@v4
