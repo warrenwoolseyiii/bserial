@@ -169,6 +169,10 @@ class SerialTerminalApp:
         self.calibrate_gyro_sf_button = ttk.Button(catto_frame, text="Calibrate Gyro SF", command=lambda: self.send_command("calibrate_gyro_sf\n"), state="disabled")
         self.calibrate_gyro_sf_button.grid(row=7, column=1, padx=5, pady=5, sticky="ew")
 
+        # Button for the run_post command, which will run the post command
+        self.run_post_button = ttk.Button(catto_frame, text="Run Post", command=lambda: self.send_command("run_post\n"), state="disabled")
+        self.run_post_button.grid(row=8, column=0, padx=5, pady=5, sticky="ew")
+
     def update_ports(self):
         """Update the list of available serial ports."""
         try:
