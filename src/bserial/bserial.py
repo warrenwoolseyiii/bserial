@@ -213,6 +213,7 @@ class SerialTerminalApp:
             self.cat_button.config(state="normal")
             self.reformat_button.config(state="normal")
             self.calibrate_gyro_sf_button.config(state="normal")
+            self.run_post_button.config(state="normal")
             
             # Start the thread for reading data
             self.read_thread = threading.Thread(target=self.read_serial, daemon=True)
