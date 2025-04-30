@@ -176,11 +176,11 @@ class SerialTerminalApp:
         # Text box for the set_serial_number command, which will set the serial number, located to the right of the set_sn button, default value of ""
         self.sn_var = tk.StringVar(value="")
         self.sn_entry = ttk.Entry(catto_frame, textvariable=self.sn_var)
-        self.sn_entry.grid(row=8, column=1, padx=5, pady=5, sticky="ew")
+        self.sn_entry.grid(row=9, column=0, padx=5, pady=5, sticky="ew")
 
         # Button for the set_sn command, which will set the serial number
-        self.set_sn_button = ttk.Button(catto_frame, text="Set SN", command=lambda: self.send_command("set_serial_number\n"), state="disabled")
-        self.set_sn_button.grid(row=9, column=0, padx=5, pady=5, sticky="ew")
+        self.set_sn_button = ttk.Button(catto_frame, text="Set SN", command=lambda: self.send_command(f"set_serial_number {self.sn_var.get()}\n"), state="disabled")
+        self.set_sn_button.grid(row=9, column=1, padx=5, pady=5, sticky="ew")
 
     def update_ports(self):
         """Update the list of available serial ports."""
