@@ -6,3 +6,5 @@ REVISION = 0
 def get_version():
     """Returns the version as a string."""
     return f"{MAJOR}.{MINOR}.{REVISION}"
+
+__version__ = get_version()

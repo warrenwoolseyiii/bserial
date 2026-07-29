@@ -1,0 +1,34 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "bserial"
+dynamic = ["version"]
+description = "Cross-platform serial port utility"
+readme = "README.md"
+authors = [
+    { name = "Warren Woolsey" },
+]
+requires-python = ">=3.7"
+dependencies = [
+    "pyserial",
+]
+
+[project.urls]
+Homepage = "https://github.com/warrenwoolseyiii/bserial"
+
+[project.scripts]
+bserial = "bserial.bserial:main"
+
+[project.optional-dependencies]
+dev = ["pytest", "pytest-cov", "ruff", "build", "pyinstaller"]
+
+[tool.setuptools.dynamic]
+version = { attr = "bserial.version.__version__" }
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-dir]
+"" = "src"

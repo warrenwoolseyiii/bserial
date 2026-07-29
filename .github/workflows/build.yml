@@ -46,7 +46,7 @@ jobs:
 
       - name: Build executable with PyInstaller
         run: |
-          pyinstaller --onefile src/bserial/bserial.py --name bserial
+          pyinstaller --onefile --windowed --paths src --name bserial src/bserial/__main__.py
         
       - name: Upload Executable
         uses: actions/upload-artifact@v4
