@@ -3,6 +3,7 @@ import os
 import queue
 import sys
 import threading
+from datetime import datetime
 
 from .ansi import AnsiParser
 from .version import get_version  # Importing version from version.py
@@ -55,6 +56,9 @@ class SerialTerminalApp:
         # Confirmed via raw serial capture against a real device where no
         # 0x1B byte was ever present -- only literal "e[0;33m" text.
         self.literal_e_quirk_var = tk.BooleanVar(value=False)
+        # OS timestamp prefix: prepend "[HH:MM:SS:MS]" to each received line.
+        self.timestamp_var = tk.BooleanVar(value=False)
+        self._ts_line_start = True
         self.ansi_parser = AnsiParser(literal_e_quirk=self.literal_e_quirk_var.get())
         self.configured_tags = set()
         self._last_pinned = True
@@ -143,6 +147,10 @@ class SerialTerminalApp:
             command=self._on_literal_e_quirk_toggle,
         )
         self.literal_e_checkbox.grid(row=3, column=0, columnspan=2, sticky="w")
+
+        # OS timestamp prefix toggle: affects subsequent lines only.
+        self.timestamp_checkbox = ttk.Checkbutton(action_frame, text="Add OS Timestamp", variable=self.timestamp_var)
+        self.timestamp_checkbox.grid(row=4, column=0, sticky="w")
 
         self.log_button = ttk.Button(action_frame, text="Select Log File", command=self.select_log_file, state="disabled")
         self.log_button.grid(row=2, column=1, padx=5, sticky="w")
@@ -244,6 +252,25 @@ class SerialTerminalApp:
         finally:
             self.root.after(self._queue_poll_ms, self._poll_serial_queue)
 
+    def _timestamp_str(self):
+        """Local OS time as "[HH:MM:SS:MS] " (MS = 3-digit milliseconds)."""
+        now = datetime.now()
+        return now.strftime("[%H:%M:%S:") + f"{now.microsecond // 1000:03d}] "
+
+    def _prefix_lines(self, text, pending):
+        """Prefixes each line-start in ``text`` with a timestamp, chunk-safe:
+        ``pending`` carries "next char starts a new line" across calls so a
+        line split across reads is only stamped once, at its true start."""
+        if not text:
+            return text, pending
+        out = []
+        for line in text.splitlines(keepends=True):
+            if pending:
+                line = self._timestamp_str() + line
+            out.append(line)
+            pending = line.endswith("\n")
+        return "".join(out), pending
+
     def process_ansi_chunk(self, chunk):
         """Parses an incoming chunk of (possibly ANSI-colored) text into
         styled spans and inserts each span with its own Tk tag, preserving
@@ -256,15 +283,27 @@ class SerialTerminalApp:
         if not spans:
             return
 
+        ts_on = self.timestamp_var.get()
+
         # Plain text (ANSI stripped) for file logging.
         clean_text = "".join(span.text for span in spans)
-        self.log_to_file(clean_text.rstrip("\n"))
+        if ts_on:
+            log_text, _ = self._prefix_lines(clean_text, self._ts_line_start)
+        else:
+            log_text = clean_text
+        self.log_to_file(log_text.rstrip("\n"))
 
         pinned = self._is_pinned()
         self.output_text.config(state="normal")
+        pending = self._ts_line_start
         for span in spans:
             tag = self.ensure_tag_configured(span.state)
-            self.output_text.insert("end", span.text, tag)
+            text = span.text
+            if ts_on:
+                text, pending = self._prefix_lines(text, pending)
+            self.output_text.insert("end", text, tag)
+        if ts_on:
+            self._ts_line_start = pending
         self._trim_buffer(pinned)
         self.output_text.config(state="disabled")
         self._autoscroll(pinned)
